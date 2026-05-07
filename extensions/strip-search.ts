@@ -74,7 +74,7 @@ export default function registerSearchTools(pi: ExtensionAPI) {
 			"Search DuckDuckGo, fetch result pages, strip HTML, and return compact text.",
 		promptSnippet: "Search the web and return compact stripped page text",
 		promptGuidelines: [
-			"Use search_strip when you need current web results. It strips result pages and returns compact text for context.",
+			"Use search_strip when you need simple web results. It strips result pages and returns compact text for context.",
 		],
 		full: false,
 	});
@@ -86,7 +86,7 @@ export default function registerSearchTools(pi: ExtensionAPI) {
 			"Search DuckDuckGo, fetch result pages, strip HTML, and return the full stripped text for each page.",
 		promptSnippet: "Search the web and return full stripped page text",
 		promptGuidelines: [
-			"Use search_strip_full only when search_strip is too short or the full fetched pages are needed. It can return a lot of text.",
+      "Use search_strip_full when you need more detailed web results. It strips result pages and returns full text for context.",
 		],
 		full: true,
 	});
@@ -98,7 +98,7 @@ export default function registerSearchTools(pi: ExtensionAPI) {
 			description: "Fetch a URL, strip HTML, and return compact text.",
 			promptSnippet: "Fetch one URL and return compact stripped page text",
 			promptGuidelines: [
-				"Use strip_fetch when you already have a URL and only need its stripped page text without running search.",
+        "Use strip_fetch when you have a URL and need do get it's content with stripped html tags",
 			],
 			parameters: fetchParams,
 			async execute(_id, params, signal, onUpdate) {
