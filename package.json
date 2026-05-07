@@ -1,0 +1,60 @@
+{
+  "name": "@pavlokrykh/strip-search",
+  "version": "0.1.0",
+  "description": "A pi extension for compact DuckDuckGo search results.",
+  "author": "pavlokrykh",
+  "license": "MIT",
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pavlokrykh/strip-search.git"
+  },
+  "homepage": "https://github.com/pavlokrykh/strip-search#readme",
+  "bugs": {
+    "url": "https://github.com/pavlokrykh/strip-search/issues"
+  },
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "pi",
+    "duckduckgo",
+    "web-search",
+    "search",
+    "html-stripper",
+    "agent-tool"
+  ],
+  "files": [
+    "extensions",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "search": "tsx src/cli.ts",
+    "check": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "pi": {
+    "extensions": [
+      "./extensions"
+    ]
+  },
+  "peerDependencies": {
+    "@mariozechner/pi-ai": "*",
+    "@mariozechner/pi-coding-agent": "*"
+  },
+  "devDependencies": {
+    "@types/html-to-text": "^9.0.4",
+    "@types/node": "latest",
+    "tsx": "latest",
+    "typescript": "latest"
+  },
+  "dependencies": {
+    "cheerio": "^1.2.0",
+    "html-to-text": "^10.0.0"
+  }
+}
