@@ -7,7 +7,7 @@ export async function fetchText(url: string): Promise<string> {
       "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
       "accept-language": "en-US,en;q=0.9",
     },
-    signal: AbortSignal.timeout(15000),
+    signal: AbortSignal.timeout(30000),
   });
 
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
