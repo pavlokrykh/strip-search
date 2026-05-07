@@ -1,6 +1,6 @@
 # strip-search
 
-A pi extension that adds 3 tools:
+`strip_search` is a simple token-efficient pi extension that adds 3 tools:
 
 - `search_strip` - compact DuckDuckGo results with stripped page text (up to 3000 chars per page)
 - `search_strip_full` - same thing, but returns the full stripped page text

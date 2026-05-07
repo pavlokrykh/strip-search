@@ -2,7 +2,8 @@
 
 import { Type } from "@mariozechner/pi-ai";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import { formatResults, searchAndStrip } from "../src/search.js";
+import { Text } from "@mariozechner/pi-tui";
+import { formatResults, searchAndStrip, type Result } from "../src/search.js";
 import { fetchAndStrip } from "../src/strip.js";
 
 const searchParams = Type.Object({
@@ -14,6 +15,18 @@ const fetchParams = Type.Object({
   url: Type.String({ description: "URL to fetch and strip" }),
   max_chars: Type.Optional(Type.Number({ description: "Maximum returned characters, default 3000" })),
 });
+
+type SearchDetails = {
+  query: string;
+  maxResults: number;
+  results: Result[];
+};
+
+type FetchDetails = {
+  url: string;
+  content?: string;
+  error?: string;
+};
 
 export default function (pi: ExtensionAPI) {
   pi.registerTool({
@@ -28,6 +41,10 @@ export default function (pi: ExtensionAPI) {
     async execute(_id, params, _signal, onUpdate) {
       return runSearch(params.query as string, (params.max_results as number | undefined) ?? 3, false, onUpdate);
     },
+    renderCall(args, theme) {
+      return searchCallText("search_strip", args.query, args.max_results, theme);
+    },
+    renderResult: renderSearchResult,
   });
 
   pi.registerTool({
@@ -42,6 +59,10 @@ export default function (pi: ExtensionAPI) {
     async execute(_id, params, _signal, onUpdate) {
       return runSearch(params.query as string, (params.max_results as number | undefined) ?? 3, true, onUpdate);
     },
+    renderCall(args, theme) {
+      return searchCallText("search_strip_full", args.query, args.max_results, theme);
+    },
+    renderResult: renderSearchResult,
   });
 
   pi.registerTool({
@@ -63,17 +84,24 @@ export default function (pi: ExtensionAPI) {
         const content = await fetchAndStrip(url, { maxChars });
         return {
           content: [{ type: "text", text: `URL: ${url}\nContent: ${content}` }],
-          details: { url, content },
+          details: { url, content } satisfies FetchDetails,
         };
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         return {
           content: [{ type: "text", text: `Fetch failed: ${message}` }],
-          details: { error: message },
+          details: { url, error: message } satisfies FetchDetails,
           isError: true,
         };
       }
     },
+    renderCall(args, theme) {
+      let text = theme.fg("toolTitle", theme.bold("strip_fetch "));
+      text += theme.fg("accent", args.url);
+      text += theme.fg("dim", ` max_chars=${args.max_chars ?? 3000}`);
+      return new Text(text, 0, 0);
+    },
+    renderResult: renderFetchResult,
   });
 }
 
@@ -84,7 +112,7 @@ async function runSearch(query: string, maxResults: number, full: boolean, onUpd
     const results = await searchAndStrip(query, { maxResults, maxChars: full ? null : undefined });
     return {
       content: [{ type: "text", text: formatResults(results) }],
-      details: { query, results },
+      details: { query, maxResults, results } satisfies SearchDetails,
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -94,4 +122,64 @@ async function runSearch(query: string, maxResults: number, full: boolean, onUpd
       isError: true,
     };
   }
+}
+
+function searchCallText(name: string, query: string, maxResults: number | undefined, theme: any) {
+  let text = theme.fg("toolTitle", theme.bold(`${name} `));
+  text += theme.fg("accent", `"${query}"`);
+  text += theme.fg("dim", ` max_results=${maxResults ?? 3}`);
+  return new Text(text, 0, 0);
+}
+
+function renderSearchResult(result: any, { expanded, isPartial }: any, theme: any) {
+  if (isPartial) return new Text(theme.fg("warning", "Searching..."), 0, 0);
+
+  const details = result.details as SearchDetails | undefined;
+  const content = result.content?.[0]?.type === "text" ? result.content[0].text : "";
+
+  if (!details?.results) return new Text(theme.fg("dim", compact(content)), 0, 0);
+
+  let text = theme.fg("success", `${details.results.length} results`);
+  text += theme.fg("dim", ` max_results=${details.maxResults ?? 3}`);
+
+  const chars = details.results.reduce((sum, item) => sum + (item.content?.length ?? 0), 0);
+  if (chars) text += theme.fg("dim", ` ${chars} chars`);
+
+  for (const item of details.results.slice(0, 3)) {
+    text += `\n${theme.fg("accent", item.title)}`;
+    text += `\n${theme.fg("dim", item.url)}`;
+  }
+
+  if (expanded && content) {
+    text += `\n\n${content}`;
+  } else if (content) {
+    text += theme.fg("muted", "\n\nPress ctrl+o to view full output");
+  }
+
+  return new Text(text, 0, 0);
+}
+
+function renderFetchResult(result: any, { expanded, isPartial }: any, theme: any) {
+  if (isPartial) return new Text(theme.fg("warning", "Fetching..."), 0, 0);
+
+  const details = result.details as FetchDetails | undefined;
+  const content = result.content?.[0]?.type === "text" ? result.content[0].text : "";
+
+  if (details?.error) return new Text(theme.fg("error", details.error), 0, 0);
+
+  let text = theme.fg("success", "fetched");
+  if (details?.content) text += theme.fg("dim", ` ${details.content.length} chars`);
+  if (details?.url) text += `\n${theme.fg("dim", details.url)}`;
+
+  if (expanded && content) {
+    text += `\n\n${content}`;
+  } else if (content) {
+    text += theme.fg("muted", "\n\nPress ctrl+o to view full output");
+  }
+
+  return new Text(text, 0, 0);
+}
+
+function compact(text: string) {
+  return text.split("\n").slice(0, 4).join("\n");
 }
