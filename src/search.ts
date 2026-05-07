@@ -1,5 +1,6 @@
 import * as cheerio from "cheerio";
-import { htmlToText } from "html-to-text";
+import { fetchText } from "./http.js";
+import { fetchAndStrip, type StripOptions } from "./strip.js";
 
 export type Result = {
   title: string;
@@ -9,25 +10,17 @@ export type Result = {
   error?: string;
 };
 
-type Options = {
+type SearchOptions = StripOptions & {
   maxResults?: number;
-  maxChars?: number | null;
-  debug?: boolean;
 };
 
-const userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
-
-export async function searchAndStrip(query: string, options: Options = {}): Promise<Result[]> {
+export async function searchAndStrip(query: string, options: SearchOptions = {}): Promise<Result[]> {
   const maxResults = clamp(options.maxResults ?? 3, 1, 5);
-  const maxChars = options.maxChars === undefined ? 3000 : options.maxChars;
   const results = await duckDuckGo(query, maxResults, options.debug);
 
   for (const result of results) {
     try {
-      if (options.debug) console.error(`[fetch] ${result.url}`);
-      const html = await fetchText(result.url);
-      const content = stripHtml(html);
-      result.content = maxChars === null ? content : content.slice(0, maxChars);
+      result.content = await fetchAndStrip(result.url, options);
     } catch (err) {
       result.error = err instanceof Error ? err.message : String(err);
     }
@@ -78,39 +71,6 @@ async function duckDuckGo(query: string, maxResults: number, debug = false): Pro
   });
 
   return results;
-}
-
-async function fetchText(url: string): Promise<string> {
-  const res = await fetch(url, {
-    headers: {
-      "user-agent": userAgent,
-      "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      "accept-language": "en-US,en;q=0.9",
-    },
-    signal: AbortSignal.timeout(15000),
-  });
-
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return await res.text();
-}
-
-export function stripHtml(html: string): string {
-  const $ = cheerio.load(html);
-
-  $("script, style, noscript, nav, footer, header, svg, canvas, iframe, form").remove();
-  $("[aria-hidden='true'], [hidden]").remove();
-
-  const body = $("body").length ? $("body").html() ?? "" : $.root().html() ?? "";
-
-  return cleanText(htmlToText(body, {
-    wordwrap: false,
-    preserveNewlines: true,
-    selectors: [
-      { selector: "a", options: { ignoreHref: true } },
-      { selector: "img", format: "skip" },
-      { selector: "table", options: { maxColumnWidth: 60 } },
-    ],
-  }));
 }
 
 function cleanDuckUrl(value: string): string | undefined {

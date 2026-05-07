@@ -1,12 +1,18 @@
-// pi extension. search DuckDuckGo, fetch each result URL, strip HTML, return compact text.
+// pi extension. search DuckDuckGo, fetch pages, strip HTML, return compact text.
 
 import { Type } from "@mariozechner/pi-ai";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { formatResults, searchAndStrip } from "../src/search.js";
+import { fetchAndStrip } from "../src/strip.js";
 
-const params = Type.Object({
+const searchParams = Type.Object({
   query: Type.String({ description: "Search query" }),
   max_results: Type.Optional(Type.Number({ description: "Number of results, default 3", minimum: 1, maximum: 5 })),
+});
+
+const fetchParams = Type.Object({
+  url: Type.String({ description: "URL to fetch and strip" }),
+  max_chars: Type.Optional(Type.Number({ description: "Maximum returned characters, default 3000" })),
 });
 
 export default function (pi: ExtensionAPI) {
@@ -18,7 +24,7 @@ export default function (pi: ExtensionAPI) {
     promptGuidelines: [
       "Use search_strip when you need current web results. It strips result pages and returns compact text for context.",
     ],
-    parameters: params,
+    parameters: searchParams,
     async execute(_id, params, _signal, onUpdate) {
       return runSearch(params.query as string, (params.max_results as number | undefined) ?? 3, false, onUpdate);
     },
@@ -32,9 +38,41 @@ export default function (pi: ExtensionAPI) {
     promptGuidelines: [
       "Use search_strip_full only when search_strip is too short or the full fetched pages are needed. It can return a lot of text.",
     ],
-    parameters: params,
+    parameters: searchParams,
     async execute(_id, params, _signal, onUpdate) {
       return runSearch(params.query as string, (params.max_results as number | undefined) ?? 3, true, onUpdate);
+    },
+  });
+
+  pi.registerTool({
+    name: "strip_fetch",
+    label: "Strip Fetch",
+    description: "Fetch a URL, strip HTML, and return compact text.",
+    promptSnippet: "Fetch one URL and return compact stripped page text",
+    promptGuidelines: [
+      "Use strip_fetch when you already have a URL and only need its stripped page text without running search.",
+    ],
+    parameters: fetchParams,
+    async execute(_id, params, _signal, onUpdate) {
+      const url = params.url as string;
+      const maxChars = (params.max_chars as number | undefined) ?? 3000;
+
+      onUpdate?.({ content: [{ type: "text", text: `Fetching: ${url}` }], details: {} });
+
+      try {
+        const content = await fetchAndStrip(url, { maxChars });
+        return {
+          content: [{ type: "text", text: `URL: ${url}\nContent: ${content}` }],
+          details: { url, content },
+        };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return {
+          content: [{ type: "text", text: `Fetch failed: ${message}` }],
+          details: { error: message },
+          isError: true,
+        };
+      }
     },
   });
 }
