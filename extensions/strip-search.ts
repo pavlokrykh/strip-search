@@ -98,7 +98,7 @@ export default function registerSearchTools(pi: ExtensionAPI) {
 			description: "Fetch a URL, strip HTML, and return compact text.",
 			promptSnippet: "Fetch one URL and return compact stripped page text",
 			promptGuidelines: [
-        "Use strip_fetch when you have a URL and need do get it's content with stripped html tags",
+        "Use strip_fetch when you have a URL and need to get its content with stripped html tags",
 			],
 			parameters: fetchParams,
 			async execute(_id, params, signal, onUpdate) {
